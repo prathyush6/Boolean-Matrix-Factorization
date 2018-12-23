@@ -1,0 +1,239 @@
+\documentclass[11pt]{article}
+\usepackage{fullpage} %[cm]
+\usepackage{lmodern} % enhanced version of computer modern
+\usepackage[T1]{fontenc} % for hyphenated characters
+\usepackage{amsmath}
+\usepackage{amssymb}
+\usepackage{microtype}
+\usepackage{enumerate}
+\usepackage{ctable} % provides toprule, bottomrule, midrule
+%\usepackage[ruled,linesnumbered]{algorithm2e}
+\usepackage{amsthm}
+\usepackage{graphicx}
+\usepackage{subfig}
+\usepackage{breqn}
+\DeclareCaptionType{copyrightbox}
+\usepackage{color}
+\newcommand{\expect}{\mathrm{Exp}}
+\newcommand{\hide}[1]{}
+\newtheorem{theorem}{Theorem} % {\bfseries}{\itshape}
+\newtheorem{lemma}{Lemma}[section]{\bfseries}{\itshape}
+%\newdef{claim}{Claim}
+%
+%\theoremstyle{definition}
+%\newtheorem{definition}[lemma]{Definition} % {\bfseries}{\itshape}
+%
+%\theoremstyle{remark}
+\newtheorem{claim}[lemma]{Claim} % {\bfseries}{\itshape}
+\newtheorem{observation}[lemma]{Observation} % {\bfseries}{\itshape}
+%
+\DeclareMathOperator*{\argmin}{arg\,min}
+\newcommand{\opt}{\mathrm{OPT}}
+\newcommand{\eopt}{E_{\mathrm{OPT}}}
+\newcommand{\edeg}{e_{\mathrm{deg}}}
+\newcommand{\prob}{\textsc{Spectral Radius Minimization}}
+\newcommand{\degr}{\mathrm{d}}
+\newcommand{\Vol}{\mathrm{Vol}}
+\newcommand{\wmax}{w_{\max}}
+\newcommand{\eps}{\epsilon}
+\newcommand{\diff}{\textsc{diff}}
+\newcommand{\intS}{\textsc{Int}}
+\newcommand{\cost}{\textsc{cost}}
+\newcommand{\elt}{\text{elt}}
+\newcommand{\ceil}[1]{\left\lceil #1 \right\rceil}
+\DeclareMathOperator*{\nodes}{nodes}
+\DeclareMathOperator*{\walks}{walks}
+\DeclareMathOperator*{\ct}{count}
+
+\title{Approximation Algorithms for Boolean Matrix Factorization}
+%\author{}
+%\date{}
+%
+\begin{document}
+%\maketitle
+%
+
+\section{Dominated Boolean Matrix Facorization (DBMF)}
+
+The DBMF problem is defined in the following manner (following \cite{miettinen:icdm10}):
+Given a matrix $A\in\{0, 1\}^{n\times m}$, and a parameter $k$,
+find matrices $B\in \{0, 1\}^{n\times k}$ and $C\in\{0, 1\}^{k\times m}$ such
+that $B\circ C \preceq A$ (i.e., if $A_{ij}=0$ then $(B\circ C)_{ij}=0$),
+and $|B\circ C| = |\{(i,j): (B\circ C)_{ij}=1\}|$ is maximized.
+
+Our algorithm is based on a semi definite programming based rounding.
+Notation
+\begin{itemize}
+\item
+For any integer $n$, let $[n]$ denote the set $\{1,\ldots,n\}$
+\item
+$\overline{\mathbf{B_{i\ell}}}$ and $\overline{\mathbf{C_{\ell j}}}$ are variables,
+which are vectors in some dimension, for $i\in[n]$, $\ell\in[k]$, and $j\in[m]$
+\item
+$\overline{\mathbf{z_{ij}}}$ is variable vector for each $i \in [n]$, $j\in[m]$
+\item
+$\mathbf{e}$ denotes the vector $(1, 0, \ldots, 0)$
+\end{itemize}
+
+\begin{eqnarray}
+\max \sum_{ij} \overline{\mathbf{z_{ij}}}\cdot\mathbf{e} && \text{ s.t.}\\
+\forall i,j \mbox{ s.t.} A_{ij}=0,\ \forall\ \ell:\ \overline{\mathbf{B_{i\ell}}}\cdot\overline{\mathbf{C_{\ell j}}} & \leq & 0\\
+\forall i,j \mbox{ s.t.} A_{ij}=1: \sum_{\ell} \overline{\mathbf{B_{i\ell}}}\cdot\overline{\mathbf{C_{\ell j}}} &\geq& \overline{\mathbf{z_{ij}}}\cdot\mathbf{e} \\
+unit \; vector \; constraints
+\end{eqnarray}
+We now show that the above SDP is a valid relaxation for the DBMP problem.
+\begin{claim}
+Any solution feasible to the DBMF problem is also feasible to the above SDP. Furthermore, the value of the DBMF solution is equal to its value objective value in the SDP. 
+\end{claim}
+\begin{proof} (Sketch)
+Let the matrices $B^{'} \in \{0, 1\}^{n\times k}$ and $C^{'} \in\{0, 1\}^{k\times m}$ be a feasible solution to DBMF. Then, if $A_{ij} = 0$, implies, $(B^{'} \circ C^{'})_{ij}=0$, which could be rewritten as $\lor_{l=1}^k B_{il}^{'} \cdot C_{lj}^{'} = 0$.  This satisfies the SDP constraint, if $A_{ij} = 0$, then $\forall l: B_{il}^{'} \cdot C_{lj}^{'} \leq 0$. Therefore, $B^{'}$ and $C^{'}$ are feasible for the SDP.  The DBMF value of this solution is equal to the number of 1's in $B^{'} \circ C^{'}$. 
+\end{proof}
+
+Our rounding algorithm involves the following steps
+\begin{itemize}
+\item
+Pick a random unit vector $\mathbf{r}$
+\item
+For each $i, \ell$, set $B_{i\ell}=1$ if $\overline{\mathbf{B_{i\ell}}}\cdot\mathbf{r} \geq \frac{1}{\sqrt{2}}$, i.e.,
+if $\overline{\mathbf{B_{i\ell}}}$ is within an angle of $\pi/4$ of $\mathbf{r}$.
+\item
+For each $\ell, j$, set $C_{\ell j}=1$ if $\overline{\mathbf{C_{\ell j}}}\cdot\mathbf{r} \geq \frac{1}{\sqrt{2}}$
+\end{itemize}
+
+\begin{claim}
+\label{claim1}
+Let $B_{i\ell}$ and $C_{\ell j}$ denote the rounded values above. Then,
+if $A_{ij}=0$, either $B_{i\ell}=0$ or $C_{\ell j}=0$
+\end{claim}
+\begin{proof} (Sketch)
+If $A_{ij}=0$, the angle between $\overline{\mathbf{B_{i\ell}}}$ and
+$\overline{\mathbf{C_{\ell j}}}$ is at least $\pi/2$. $\mathbf{r}$ cannot
+be within an angle of $\pi/4$ of both these vectors. 
+
+(by contradiction): Assume $A_{ij} = 0$ and $B_{il} = C_{lj} = 1$. 
+Then, by our rounding,
+\begin{eqnarray}
+\overline{\mathbf{B_{i\ell}}}.r \geq \frac{1}{\sqrt{2}}  \\
+\overline{\mathbf{C_{\ell j}}}.r \geq \frac{1}{\sqrt{2}} 
+\end{eqnarray}
+Therefore, $r$ should be within an angle $\pi/4$ of both $\overline{B_{il}}$ and $\overline{C_{lj}}$. 
+Also, from constraint (1), we know, 
+\begin{equation}
+\overline{\mathbf{B_{i\ell}}}.\overline{\mathbf{C_{\ell j}}}\leq 0
+\end{equation}
+i.e., the angle between $\overline{\mathbf{B_{i\ell}}}$ and $\overline{\mathbf{C_{\ell j}}}$ is at least $\pi/2$. This can only happen if $r$ is exactly at angle of $\pi/4$ from both these vectors. Since, $r$ is a unit vector picked at random, the probability of this happening is 0. Therefore, $r$ cannot be within an angle of $\pi/4$ of both these vectors. 
+\end{proof}
+\begin{claim}
+\label{claim2}
+If $A_{ij}=1$, there exists $\ell$ such that
+\[
+\Pr[B_{i\ell} = C_{\ell j} = 1] \geq \overline{\mathbf{z_{ij}}}\cdot \mathbf{e}/(2\pi k)
+\]
+\end{claim}
+
+We need the following claim.
+\begin{claim}
+\label{claim3}
+Let the angle between $\overline{\mathbf{B_{i\ell}}}$ and $\overline{\mathbf{C_{\ell j}}}$
+be $\theta$ (in a 2D projection). Then, 
+\[
+\Pr[\mathbf{r} \mbox{ is within $\pi/4$ of both $\overline{\mathbf{B_{i\ell}}}$ and $\overline{\mathbf{C_{\ell j}}}$}] = \frac{\pi/2 - \theta}{2\pi}
+\]
+\end{claim}
+
+We first assume Claim \ref{claim3} and prove Claim \ref{claim2}.
+\begin{proof} (of Claim \ref{claim2}, sketch)
+Since $A_{ij}=1$, we have
+\[
+ \sum_{\ell} \overline{\mathbf{B_{i\ell}}}\cdot\overline{\mathbf{C_{\ell j}}} \geq \overline{\mathbf{z_{ij}}}\cdot\mathbf{e}
+\]
+
+The RHS is $\geq 0$ (else, we could set $\mathbf{z_{ij}}=0$ and increase the
+objective.
+Therefore, there exists $\ell$ such that
+\[
+\overline{\mathbf{B_{i\ell}}}\cdot\overline{\mathbf{C_{\ell j}}} \geq \overline{\mathbf{z_{ij}}}\cdot\mathbf{e}/k
+\]
+We assume $\ell$ satisfies this condition below.
+
+Let $x=\overline{\mathbf{B_{i\ell}}}\cdot \overline{\mathbf{C_{\ell j}}}$.
+Let $\theta$ be the angle between $\overline{\mathbf{B_{i\ell}}}$ and $\overline{\mathbf{C_{\ell j}}}$
+in a 2D projection. Then
+\begin{eqnarray*}
+cos(\theta) &=& x\\
+\Rightarrow sin(\frac{\pi}{2} - \theta) &=& x\\
+sin^{-1}(x) &=& x + \frac{1}{6}x^3 + \ldots\\
+ &\geq& x\\
+\Rightarrow (\frac{\pi}{2} - \theta) &=& sin^{-1}(x)\\
+&\geq& x\\
+&=& \overline{\mathbf{B_{i\ell}}}\cdot \overline{\mathbf{C_{\ell j}}}\\
+&\geq& \overline{\mathbf{z_{ij}}}\cdot\mathbf{e}/k
+\end{eqnarray*}
+
+By Claim \ref{claim3},
+\[
+\Pr[\mathbf{r} \mbox{ is within $\pi/4$ of both $\overline{\mathbf{B_{i\ell}}}$ and $\overline{\mathbf{C_{\ell j}}}$}] \geq 
+\frac{\pi/2 - \theta}{2\pi} \geq \overline{\mathbf{z_{ij}}}\cdot\mathbf{e}/(2\pi k)
+\]
+\end{proof}
+
+\begin{claim}
+\label{claim4}
+Let $B_{i\ell}$ and $C_{\ell j}$ be the rounded values. Let $z_{ij}=1$
+if $B_{i\ell}= C_{\ell j}=1$ for some $\ell$, else $z_{ij}=0$.
+Then,
+\[
+E[\sum_{ij} z_{ij}] \geq OPT/(2\pi k),
+\]
+where $OPT$ denotes the objective value of an optimum solution.
+\end{claim}
+\begin{proof}
+We have $z_{ij}=1$ if $B_{i\ell}=1$ and $C_{\ell j}=1$. Therefore,
+$\Pr[z_{ij}=1] \geq \overline{\mathbf{z_{ij}}}\cdot\mathbf{e}/(2\pi k)$.
+This implies
+\[
+E[\sum_{ij} z_{ij}] \geq \sum_{ij} \overline{\mathbf{z_{ij}}}\cdot\mathbf{e}/(2\pi k)
+\geq OPT/(2\pi k)
+\]
+\end{proof}
+\iffalse
+\begin{figure}
+\centering
+\includegraphics[width  = 0.5cm, height = 0.5cm][figs/projection.pdf}
+\caption{
+Consider the 2D plane formed by the vectors $\overline{\mathbf{B_{i\ell}}}$
+and $\overline{\mathbf{C_{\ell j}}}$.
+Let OP and OQ denote the vectors $\overline{\mathbf{B_{i\ell}}}$
+and $\overline{\mathbf{C_{\ell j}}}$, respectively. We assume the
+space is rotated, so the vectors are symmetric with respect to line
+OR, which denotes the line at angle $\pi/4$ (i.e., bisects OP and OQ).
+Let $\angle POQ=\theta$. Then, $\angle UOP = \angle VOQ = (\pi/2 - \theta)/2$.
+Let OS be the line such that $\angle ROS = (\pi/2 - \theta)/2$.
+Similarly, let OT be the line such that $\angle ROT = (\pi/2 - \theta)/2$.
+}
+\label{fig:claim3}
+\end{figure}
+\fi
+\begin{proof} (of \ref{claim3}, Sketch)
+Follow the notation from Figure \ref{fig:claim3}.
+
+Since $\overline{\mathbf{B_{i\ell}}}\cdot \overline{\mathbf{C_{\ell j}}}\geq 
+\overline{\mathbf{z_{ij}}}\cdot\mathbf{e}/k \geq 0$, the vectors OP and OQ lie
+in the first quadrant, and the figure can be constructed.
+
+By construction, $\angle POS = \pi/4$. Therefore,
+because of our rounding, $B_{i\ell}=1$ if the random vector $\mathbf{r}$ lies
+in the sector formed by OP and OS. Similarly, $C_{\ell j}=1$ if the
+random vector $\mathbf{r}$ lies in the sector formed by OQ and OT.
+Therefore, $B_{i\ell}=C_{\ell j}=1$ if $\mathbf{r}$ lies in the intersection
+of these two sectors, i.e., in the sector formed by OS and OT.
+We have $\angle SOT = \pi/2 -\theta$. Since $\mathbf{s}$ is picked randomly,
+the probability that it lies in this sector is $\frac{\pi/2 -\theta}{2\pi}$.
+\end{proof}
+
+\bibliographystyle{plain}
+\bibliography{references}
+
+\end{document}
+
+ 
